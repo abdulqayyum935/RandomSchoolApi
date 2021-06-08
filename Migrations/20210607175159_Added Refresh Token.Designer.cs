@@ -4,14 +4,16 @@ using CrudAPIWithRepositoryPattern.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CrudAPIWithRepositoryPattern.Migrations
 {
     [DbContext(typeof(RandomSchoolContext))]
-    partial class RandomSchoolContextModelSnapshot : ModelSnapshot
+    [Migration("20210607175159_Added Refresh Token")]
+    partial class AddedRefreshToken
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -113,30 +115,6 @@ namespace CrudAPIWithRepositoryPattern.Migrations
                     b.HasKey("ID");
 
                     b.ToTable("Courses");
-                });
-
-            modelBuilder.Entity("CrudAPIWithRepositoryPattern.Models.Customer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<string>("Contact")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FirstName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LastName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("CrudAPIWithRepositoryPattern.Models.Person", b =>

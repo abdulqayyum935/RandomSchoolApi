@@ -13,6 +13,8 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
+using System.Text.Json;
+using CrudAPIWithRepositoryPattern.IRepositories;
 
 namespace CrudAPIWithRepositoryPattern.Controllers
 {
@@ -23,13 +25,20 @@ namespace CrudAPIWithRepositoryPattern.Controllers
     {
         private readonly UserManager<ApplicationUser> userManager;
         private readonly RoleManager<IdentityRole> roleManager;
+        private readonly IUnitOfWork iUnitOfWork;
+
 
         private readonly IConfiguration _configuration;
-        public AuthController(UserManager<ApplicationUser> userManager, IConfiguration configuration, RoleManager<IdentityRole> roleManager)
+        public AuthController(UserManager<ApplicationUser> userManager,
+            IConfiguration configuration,
+            RoleManager<IdentityRole> roleManager,
+            IUnitOfWork iUnitOfWork
+            )
         {
             this.userManager = userManager;
             _configuration = configuration;
             this.roleManager = roleManager;
+            this.iUnitOfWork = iUnitOfWork;
         }
 
         [HttpPost]
@@ -49,7 +58,7 @@ namespace CrudAPIWithRepositoryPattern.Controllers
                 UserName = registerViewModel.Email
             };
 
-            var role =await roleManager.RoleExistsAsync("Student");
+            var role = await roleManager.RoleExistsAsync("Student");
             if (!role)
             {
                 var newRole = new IdentityRole() { Name = "Student" };
@@ -65,13 +74,13 @@ namespace CrudAPIWithRepositoryPattern.Controllers
             return Ok(new { Status = "Success", Message = "User created successfully!" });
         }
         [HttpPost, Route("login")]
-        public async Task<IActionResult> Login([FromBody]LoginViewModel loginViewModel)
+        public async Task<IActionResult> Login([FromBody] LoginViewModel loginViewModel)
         {
             var user = await userManager.FindByEmailAsync(loginViewModel.Email);
             if (user != null && await userManager.CheckPasswordAsync(user, loginViewModel.Password))
             {
                 var userRoles = await userManager.GetRolesAsync(user);
-                
+
                 var authClaims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, user.UserName),
@@ -89,28 +98,73 @@ namespace CrudAPIWithRepositoryPattern.Controllers
                 var token = new JwtSecurityToken(
                     issuer: _configuration["JWT:ValidIssuer"],
                     audience: _configuration["JWT:ValidAudience"],
-                    expires: DateTime.Now.AddHours(3),
+                    expires: DateTime.Now.AddMinutes(2),//AddHours(3),
                     claims: authClaims,
                     signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
                     );
+
+                var refreshToken = Guid.NewGuid().ToString().Replace('-', '.');
+                var expiry = DateTime.Now.AddHours(1);
+                user.RefreshToken = refreshToken;
+                user.RefreshTokenExpiryDate = expiry;
+                iUnitOfWork.SaveChanges();
+
 
                 return Ok(new
                 {
                     token = new JwtSecurityTokenHandler().WriteToken(token),
                     expiration = token.ValidTo,
-                    userName=user.Name
+                    userName = user.Name,
+                    refreshToken = refreshToken
                 });
             }
             return Unauthorized();
         }
-        
 
-        [HttpPost,Route("checkEmailAvailability")]
+
+        [HttpPost, Route("checkEmailAvailability")]
         public async Task<IActionResult> CheckEmailAddress([FromBody] LoginViewModel model)
         {
             var result = await userManager.FindByEmailAsync(model.Email);
-            if (result == null) return Ok(new{ message =false});
+            if (result == null) return Ok(new { message = false });
             return Ok(new { message = true });
+        }
+        [HttpPost, Route("refreshToken")]
+        public IActionResult RefreshToken([FromBody] RefreshTokenViewModel tokens)
+        {
+            if (string.IsNullOrEmpty(tokens.RefreshToken) || string.IsNullOrEmpty(tokens.Token))
+            {
+                return Unauthorized();
+            }
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+            SecurityToken securityToken;
+
+
+            var principal = tokenHandler.ValidateToken(tokens.Token, new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidAudience = _configuration["JWT:ValidAudience"],
+                ValidIssuer = _configuration["JWT:ValidIssuer"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"])),
+                ValidateLifetime = false
+            }, out securityToken) ;
+
+            var jwtToken = securityToken as JwtSecurityToken;
+            if (jwtToken == null || !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256))
+            {
+                return Unauthorized();
+            }
+            var newToken = new JwtSecurityToken(
+              issuer: _configuration["JWT:ValidIssuer"],
+                    audience: _configuration["JWT:ValidAudience"],
+                    expires: DateTime.Now.AddMinutes(2),// DateTime.Now.AddHours(3),
+                    claims: principal.Claims,
+                    signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
+                    );
+            return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(newToken), refreshToken = Guid.NewGuid().ToString().Replace('-', '.') });
+        
         }
 
     }

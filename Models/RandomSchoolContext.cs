@@ -20,6 +20,7 @@ namespace CrudAPIWithRepositoryPattern.Models
 
         public DbSet<Person> Person { get; set; }
         public DbSet<PersonSkills> PersonSkills { get; set; }
+        public DbSet<Customer> Customers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

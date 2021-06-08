@@ -15,7 +15,7 @@ namespace CrudAPIWithRepositoryPattern.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Student")]
+    //[Authorize(Roles = "Student")]
     public class CourseController : ControllerBase
     {
         private readonly ICourseRepository _courseRepository;

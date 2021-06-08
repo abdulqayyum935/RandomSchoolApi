@@ -9,5 +9,9 @@ namespace CrudAPIWithRepositoryPattern.Models
     public class ApplicationUser:IdentityUser
     {
         public string Name { get; set; }
+
+        // for refresh token
+        public string RefreshToken { get; set; }
+        public DateTime RefreshTokenExpiryDate { get; set; }
     }
 }

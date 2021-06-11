@@ -58,7 +58,20 @@ namespace CrudAPIWithRepositoryPattern
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(options =>
+            })
+                .AddGoogle("google", options =>
+            {
+                var googleAuth = Configuration.GetSection("Authentication:Google");
+                options.ClientId = googleAuth["ClientId"];
+                options.ClientSecret = googleAuth["ClientSecret"];
+                options.SignInScheme = IdentityConstants.ExternalScheme;
+            })
+            .AddFacebook("facebook", options =>
+            {
+                options.AppId = Configuration["Authentication:Facebook:AppId"];
+                options.AppSecret = Configuration["Authentication:Facebook:AppSecret"];
+            })
+                .AddJwtBearer(options =>
             {
                 options.SaveToken = true;
                 options.RequireHttpsMetadata = false;
@@ -79,6 +92,7 @@ namespace CrudAPIWithRepositoryPattern
                 .Build();
                 options.Filters.Add(new AuthorizeFilter(policy));
             });
+            services.AddHttpClient();
 
             services.AddScoped<ICourseRepository, CourseRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -87,7 +101,8 @@ namespace CrudAPIWithRepositoryPattern
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<IPersonRepository, PersonRepository>();
             services.AddScoped<IPersonSkillRepository, PersonSkillRepository>();
-
+            services.AddScoped<ICustomerRepository, CustomerRepository>();
+            services.AddScoped<IFacebookAuthRepository, FacebookAuthRepository>();
 
             services.AddCors(options =>
             {
